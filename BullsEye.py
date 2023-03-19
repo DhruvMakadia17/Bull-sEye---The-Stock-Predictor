@@ -2,7 +2,7 @@ import datetime
 import streamlit as st
 import pandas as pd
 import numpy as np
-import yfinance as yf
+# import yfinance as yf
 from yahoo_fin.stock_info import get_data
 from streamlit_option_menu import option_menu
 import warnings
