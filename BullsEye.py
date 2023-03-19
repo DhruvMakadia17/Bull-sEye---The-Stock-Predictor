@@ -46,7 +46,7 @@ if selected == "Home":
         st.write("\n")
         st.image("Media/mrf.png", width=140)
         st.write("\n")
-        st.image("Media/unilever.png", width=130)
+        st.image("Media/Unilever.png", width=130)
         
     with col4:
         st.image("Media/hdfc.jpg", width=120)
