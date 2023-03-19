@@ -1,3 +1,4 @@
 yahoo_fin
 streamlit-option-menu
 scikit-learn
+yfinance
