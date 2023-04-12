@@ -119,7 +119,7 @@ elif selected == "Prediction":
         predicted = pred1.flatten().tolist()
 
         t = predicted[-1]
-        st.subheader("Your latest predicted closing price is: ")
+        st.subheader("Your weekly predicted closing price is: ")
         st.title(t)
 
     st.write('You selected:', ticker)
