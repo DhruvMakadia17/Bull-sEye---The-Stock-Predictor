@@ -8,9 +8,9 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Function to get stock data using yfinance
-def get_stock_data(ticker, start_date=None, end_date=None):
+def get_stock_data(ticker):
     stock = yf.Ticker(ticker)
-    df = stock.history(start=start_date, end=end_date)
+    df = stock.history(period="max")  # This will fetch all available historical data
     df.reset_index(inplace=True)  # Convert Date from index to column
     return df
 
