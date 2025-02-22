@@ -2,12 +2,19 @@ import datetime
 import streamlit as st
 import pandas as pd
 import numpy as np
-# import yfinance as yf
-from yahoo_fin.stock_info import get_data
+import yfinance as yf
 from streamlit_option_menu import option_menu
 import warnings
 warnings.filterwarnings('ignore')
 
+# Function to get stock data using yfinance
+def get_stock_data(ticker, start_date=None, end_date=None):
+    stock = yf.Ticker(ticker)
+    df = stock.history(start=start_date, end=end_date)
+    df.reset_index(inplace=True)  # Convert Date from index to column
+    return df
+
+# Navigation Menu
 selected = option_menu(None,
     options=["Home", "Visualization", "Prediction", "Accuracy"],
     icons=["house", "graph", "book", "envelope"],
@@ -15,10 +22,6 @@ selected = option_menu(None,
     default_index=0,
     orientation="horizontal"
 )
-
-def get_stock_data(ticker):
-    df = get_data(ticker, start_date = None, end_date = None, index_as_date = False, interval ='1d')
-    return df
 
 ##------------------------------- HOME PAGE -------------------------------
 if selected == "Home":
@@ -57,141 +60,131 @@ if selected == "Home":
         st.image("Media/bajaj.png", width=140)
         st.write("\n")
         st.image("Media/titan.png", width=140)
-    
-        
 
 ##------------------------------- PREDICTION PAGE -------------------------------
 elif selected == "Prediction":
     st.title("Predictor")
-    ticker = st.selectbox("Pick any stock or index to predict:" ,
-        ("APOLLOHOSP.NS","TATACONSUM.NS","TATASTEEL.NS","RELIANCE.NS","LT.NS","BAJAJ-AUTO.NS","WIPRO.NS","BAJAJFINSV.NS","KOTAKBANK.NS",
-        "ULTRACEMCO.NS","BRITANNIA.NS","TITAN.NS","INDUSINDBK.NS","ICICIBANK.NS","ONGC.NS","NTPC.NS","ITC.NS","BAJFINANCE.NS","NESTLEIND.NS",
-        "TECHM.NS","HDFCLIFE.NS","HINDALCO.NS","BHARTIARTL.NS","CIPLA.NS","TCS.NS","ADANIENT.NS","HEROMOTOCO.NS","MARUTI.NS","COALINDIA.NS",
-        "BPCL.NS","HCLTECH.NS","ADANIPORTS.NS","DRREDDY.NS","EICHERMOT.NS","ASIANPAINT.NS","GRASIM.NS","JSWSTEEL.NS","DIVISLAB.NS","TATACONSUM.NS",
-        "SBIN.NS","HDFCBANK.NS","HDFC.NS","WIPRO.NS","UPL.NS","POWERGRID.NS","TATAPOWER.NS","TATAMOTORS.NS","SUNPHARMA.NS","HINDUNILVR.NS",
-        "SBILIFE.NS","INFY.NS","AXISBANK.NS"))
+    # Updated ticker symbols without .NS (yfinance format)
+    ticker = st.selectbox("Pick any stock or index to predict:",
+        ("APOLLOHOSP.NS","TATACONSUM.NS","TATASTEEL.NS","RELIANCE.NS","LT.NS","BAJAJ-AUTO.NS",
+         "WIPRO.NS","BAJAJFINSV.NS","KOTAKBANK.NS","ULTRACEMCO.NS","BRITANNIA.NS","TITAN.NS",
+         "INDUSINDBK.NS","ICICIBANK.NS","ONGC.NS","NTPC.NS","ITC.NS","BAJFINANCE.NS",
+         "NESTLEIND.NS","TECHM.NS","HDFCLIFE.NS","HINDALCO.NS","BHARTIARTL.NS","CIPLA.NS",
+         "TCS.NS","ADANIENT.NS","HEROMOTOCO.NS","MARUTI.NS","COALINDIA.NS","BPCL.NS",
+         "HCLTECH.NS","ADANIPORTS.NS","DRREDDY.NS","EICHERMOT.NS","ASIANPAINT.NS","GRASIM.NS",
+         "JSWSTEEL.NS","DIVISLAB.NS","TATACONSUM.NS","SBIN.NS","HDFCBANK.NS","HDFC.NS",
+         "WIPRO.NS","UPL.NS","POWERGRID.NS","TATAPOWER.NS","TATAMOTORS.NS","SUNPHARMA.NS",
+         "HINDUNILVR.NS","SBILIFE.NS","INFY.NS","AXISBANK.NS"))
     
     if st.button('Predict'):
         df = get_stock_data(ticker)
-        ## ------------------------------- PREDICTION LOGIC -------------------------------
         # Data Cleaning
-        mean = df['open'].mean()
-        df['open'] = df['open'].fillna(mean)
+        for column in ['Open', 'High', 'Low', 'Close']:
+            mean = df[column].mean()
+            df[column] = df[column].fillna(mean)
 
-        mean = df['high'].mean()
-        df['high'] = df['high'].fillna(mean)
-
-        mean = df['low'].mean()
-        df['low'] = df['low'].fillna(mean)
-
-        mean = df['close'].mean()
-        df['close'] = df['close'].fillna(mean)
-
-        X = df[['open','high','low']]
-        y = df['close'].values.reshape(-1,1)
+        X = df[['Open','High','Low']]
+        y = df['Close'].values.reshape(-1,1)
         
-        #Splitting our dataset to Training and Testing dataset
+        # Splitting dataset into Training and Testing
         from sklearn.model_selection import train_test_split
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         
-        #Fitting Linear Regression to the training set
+        # Fitting Linear Regression
         from sklearn.linear_model import LinearRegression
         reg = LinearRegression()
         reg.fit(X_train, y_train)
         
-        #predicting the Test set result
-        y_pred = reg.predict(X_test)
-        o = df['open'].values
-        h = df['high'].values
-        l = df['low'].values
-
+        # Predicting for all data points
         n = len(df)
-        
         pred = []
-        for i in range(0,n):
-            open = o[i]
-            high = h[i]
-            low = l[i]
-            output = reg.predict([[open,high,low]])
+        for i in range(n):
+            open_price = df['Open'].values[i]
+            high = df['High'].values[i]
+            low = df['Low'].values[i]
+            output = reg.predict([[open_price, high, low]])
             pred.append(output)
 
         pred1 = np.concatenate(pred)
         predicted = pred1.flatten().tolist()
 
-        t = predicted[-1]
+        latest_prediction = predicted[-1]
         st.subheader("Your latest predicted closing price is: ")
-        st.title(t)
+        st.title(f"₹{latest_prediction:.2f}")
 
     st.write('You selected:', ticker)
 
 ##------------------------------- DATA VISUALIZATION -------------------------------
 elif selected == "Visualization":
-    ticker = st.selectbox("Pick any stock or index to predict:" ,
-        ("APOLLOHOSP.NS","TATACONSUM.NS","TATASTEEL.NS","RELIANCE.NS","LT.NS","BAJAJ-AUTO.NS","WIPRO.NS","BAJAJFINSV.NS","KOTAKBANK.NS",
-        "ULTRACEMCO.NS","BRITANNIA.NS","TITAN.NS","INDUSINDBK.NS","ICICIBANK.NS","ONGC.NS","NTPC.NS","ITC.NS","BAJFINANCE.NS","NESTLEIND.NS",
-        "TECHM.NS","HDFCLIFE.NS","HINDALCO.NS","BHARTIARTL.NS","CIPLA.NS","TCS.NS","ADANIENT.NS","HEROMOTOCO.NS","MARUTI.NS","COALINDIA.NS",
-        "BPCL.NS","HCLTECH.NS","ADANIPORTS.NS","DRREDDY.NS","EICHERMOT.NS","ASIANPAINT.NS","GRASIM.NS","JSWSTEEL.NS","DIVISLAB.NS","TATACONSUM.NS",
-        "SBIN.NS","HDFCBANK.NS","HDFC.NS","WIPRO.NS","UPL.NS","POWERGRID.NS","TATAPOWER.NS","TATAMOTORS.NS","SUNPHARMA.NS","HINDUNILVR.NS",
-        "SBILIFE.NS","INFY.NS","AXISBANK.NS"))
-    if st.button('Show Dataframe'):
-        st.dataframe(get_stock_data(ticker))
+    ticker = st.selectbox("Pick any stock or index to visualize:",
+        ("APOLLOHOSP.NS","TATACONSUM.NS","TATASTEEL.NS","RELIANCE.NS","LT.NS","BAJAJ-AUTO.NS",
+         "WIPRO.NS","BAJAJFINSV.NS","KOTAKBANK.NS","ULTRACEMCO.NS","BRITANNIA.NS","TITAN.NS",
+         "INDUSINDBK.NS","ICICIBANK.NS","ONGC.NS","NTPC.NS","ITC.NS","BAJFINANCE.NS",
+         "NESTLEIND.NS","TECHM.NS","HDFCLIFE.NS","HINDALCO.NS","BHARTIARTL.NS","CIPLA.NS",
+         "TCS.NS","ADANIENT.NS","HEROMOTOCO.NS","MARUTI.NS","COALINDIA.NS","BPCL.NS",
+         "HCLTECH.NS","ADANIPORTS.NS","DRREDDY.NS","EICHERMOT.NS","ASIANPAINT.NS","GRASIM.NS",
+         "JSWSTEEL.NS","DIVISLAB.NS","TATACONSUM.NS","SBIN.NS","HDFCBANK.NS","HDFC.NS",
+         "WIPRO.NS","UPL.NS","POWERGRID.NS","TATAPOWER.NS","TATAMOTORS.NS","SUNPHARMA.NS",
+         "HINDUNILVR.NS","SBILIFE.NS","INFY.NS","AXISBANK.NS"))
     
-    st.write("Closing Trend")
-    st.line_chart(data=get_stock_data(ticker), x='date', y='close', use_container_width=True)
-    st.write("Opening Trend")
-    st.line_chart(data=get_stock_data(ticker), x='date', y='open', use_container_width=True)
+    if st.button('Show Dataframe'):
+        df = get_stock_data(ticker)
+        st.dataframe(df)
+    
+    df = get_stock_data(ticker)
+    st.write("Closing Price Trend")
+    st.line_chart(data=df, x='Date', y='Close', use_container_width=True)
+    st.write("Opening Price Trend")
+    st.line_chart(data=df, x='Date', y='Open', use_container_width=True)
     st.write("Day High Trend")
-    st.line_chart(data=get_stock_data(ticker), x='date', y='high', use_container_width=True)
+    st.line_chart(data=df, x='Date', y='High', use_container_width=True)
 
-
-##------------------------------- ABOUT US PAGE -------------------------------
+##------------------------------- ACCURACY PAGE -------------------------------
 elif selected == "Accuracy":
     st.title("Accuracy Evaluation Metrics")
 
-    ticker = st.selectbox("Pick any stock to find its accuracy:" ,
-        ("APOLLOHOSP.NS","TATACONSUM.NS","TATASTEEL.NS","RELIANCE.NS","LT.NS","BAJAJ-AUTO.NS","WIPRO.NS","BAJAJFINSV.NS","KOTAKBANK.NS",
-        "ULTRACEMCO.NS","BRITANNIA.NS","TITAN.NS","INDUSINDBK.NS","ICICIBANK.NS","ONGC.NS","NTPC.NS","ITC.NS","BAJFINANCE.NS","NESTLEIND.NS",
-        "TECHM.NS","HDFCLIFE.NS","HINDALCO.NS","BHARTIARTL.NS","CIPLA.NS","TCS.NS","ADANIENT.NS","HEROMOTOCO.NS","MARUTI.NS","COALINDIA.NS",
-        "BPCL.NS","HCLTECH.NS","ADANIPORTS.NS","DRREDDY.NS","EICHERMOT.NS","ASIANPAINT.NS","GRASIM.NS","JSWSTEEL.NS","DIVISLAB.NS","TATACONSUM.NS",
-        "SBIN.NS","HDFCBANK.NS","HDFC.NS","WIPRO.NS","UPL.NS","POWERGRID.NS","TATAPOWER.NS","TATAMOTORS.NS","SUNPHARMA.NS","HINDUNILVR.NS",
-        "SBILIFE.NS","INFY.NS","AXISBANK.NS"))
-    df = get_stock_data(ticker)
-    # Data Cleaning
-    mean = df['open'].mean()
-    df['open'] = df['open'].fillna(mean)
-
-    mean = df['high'].mean()
-    df['high'] = df['high'].fillna(mean)
-
-    mean = df['low'].mean()
-    df['low'] = df['low'].fillna(mean)
-
-    mean = df['close'].mean()
-    df['close'] = df['close'].fillna(mean)
-
-    X = df[['open','high','low']]
-    y = df['close'].values.reshape(-1,1)
+    ticker = st.selectbox("Pick any stock to find its accuracy:",
+        ("APOLLOHOSP.NS","TATACONSUM.NS","TATASTEEL.NS","RELIANCE.NS","LT.NS","BAJAJ-AUTO.NS",
+         "WIPRO.NS","BAJAJFINSV.NS","KOTAKBANK.NS","ULTRACEMCO.NS","BRITANNIA.NS","TITAN.NS",
+         "INDUSINDBK.NS","ICICIBANK.NS","ONGC.NS","NTPC.NS","ITC.NS","BAJFINANCE.NS",
+         "NESTLEIND.NS","TECHM.NS","HDFCLIFE.NS","HINDALCO.NS","BHARTIARTL.NS","CIPLA.NS",
+         "TCS.NS","ADANIENT.NS","HEROMOTOCO.NS","MARUTI.NS","COALINDIA.NS","BPCL.NS",
+         "HCLTECH.NS","ADANIPORTS.NS","DRREDDY.NS","EICHERMOT.NS","ASIANPAINT.NS","GRASIM.NS",
+         "JSWSTEEL.NS","DIVISLAB.NS","TATACONSUM.NS","SBIN.NS","HDFCBANK.NS","HDFC.NS",
+         "WIPRO.NS","UPL.NS","POWERGRID.NS","TATAPOWER.NS","TATAMOTORS.NS","SUNPHARMA.NS",
+         "HINDUNILVR.NS","SBILIFE.NS","INFY.NS","AXISBANK.NS"))
     
-    #Splitting our dataset to Training and Testing dataset
+    df = get_stock_data(ticker)
+    
+    # Data Cleaning
+    for column in ['Open', 'High', 'Low', 'Close']:
+        mean = df[column].mean()
+        df[column] = df[column].fillna(mean)
+
+    X = df[['Open','High','Low']]
+    y = df['Close'].values.reshape(-1,1)
+    
+    # Splitting dataset
     from sklearn.model_selection import train_test_split
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
-    #Fitting Linear Regression to the training set
+    # Fitting Linear Regression
     from sklearn.linear_model import LinearRegression
     reg = LinearRegression()
     reg.fit(X_train, y_train)
 
     y_pred = reg.predict(X_test)
-    #Evaluating the model
+    
+    # Evaluating the model
     import sklearn.metrics as metrics
     r2 = metrics.r2_score(y_test, y_pred)
     mae = metrics.mean_absolute_error(y_test, y_pred)
     mse = metrics.mean_squared_error(y_test, y_pred)
-    rmse = mse**0.5
+    rmse = np.sqrt(mse)
     
     col1, col2 = st.columns(2)
     
-    col1.metric("R2 Score", r2, "±5%")
-    col2.metric("Mean Absolute Error ", mae, "± 5%")
-    col1.metric("Mean Squared Error", mse, "± 5%")
-    col2.metric("Root Mean Squared Error", rmse, "± 5%")
+    col1.metric("R² Score", f"{r2:.4f}", "±5%")
+    col2.metric("Mean Absolute Error", f"₹{mae:.2f}", "±5%")
+    col1.metric("Mean Squared Error", f"₹{mse:.2f}", "±5%")
+    col2.metric("Root Mean Squared Error", f"₹{rmse:.2f}", "±5%")
